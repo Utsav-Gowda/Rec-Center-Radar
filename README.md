@@ -10,7 +10,7 @@
 | Joshua Sakolsky-Madaras | [@JSakMad] |
 | [Brian Simon] | [@username] |
 | Ishay Wirthiem | [@IshayWir] |
-| [Devin Gilson] | [@dggilson] |
+| Devin Gilson | [@dggilson] |
 
 ## Project Purpose
 
