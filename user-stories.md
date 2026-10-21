@@ -111,3 +111,25 @@ MVP: no
 - [ ] Posted announcements are visible to every signed-in Pitt community member.
 - [ ] A gym employee can remove an announcement, after which it is no longer visible to users.
 - [ ] Users who are not gym employees cannot post or remove announcements.
+
+## US11: Save favorite equipment
+As a Pitt community member, I want to mark machines as favorites so that I can quickly pull up the equipment in my regular routine without searching each time.
+FR: FR1, FR5, FR10, FR13 
+Priority: should
+MVP: no
+
+- [ ] A signed-in user can tap a “Favorite” button on any equipment profile, and tapping it again removes the favorite.
+- [ ] A “My Favorites” list shows only that user’s favorited machines, each with its name, category, floor, and current condition badge.
+- [ ] Selecting a machine from “My Favorites” opens its location on the floor map (US2)
+- [ ] Favorites persists cross sign-outs and are visible only to the user who created them
+
+## US12: View a machine’s maintenance history
+As a gym employee, I want to view the past status changes of a machine so that I can tell whether it has a recurring problem and needs repair or replacement.
+FR: FR4, FR6, FR10
+Priority: could
+MVP: no
+
+- [ ] A gym employee can open a machine’s history, which lists each past status change with the old status, new status, note, employee ID, and date/time.
+- [ ] The list is ordered from newest to oldest.
+- [ ] Machines with no record changes show an empty state message instead of a blank list
+- [ ] Users who are not gym employees cannot see the history
