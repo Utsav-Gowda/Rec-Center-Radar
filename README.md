@@ -9,7 +9,7 @@
 | Utsav Gowda | [@Utsav-Gowda] |
 | Joshua Sakolsky-Madaras | [@JSakMad] |
 | [Brian Simon] | [@username] |
-| [Ishay Wirthiem] | [@IshayWir] |
+| Ishay Wirthiem | [@IshayWir] |
 | [Devin Gilson] | [@dggilson] |
 
 ## Project Purpose
