@@ -8,7 +8,7 @@
 |------|-----------------|
 | Utsav Gowda | [@Utsav-Gowda] |
 | Joshua Sakolsky-Madaras | [@JSakMad] |
-| [Brian Simon] | [@username] |
+| Brian Simon | [@Br1anSimon] |
 | Ishay Wirthiem | [@IshayWir] |
 | Devin Gilson | [@dggilson] |
 
