@@ -21,7 +21,7 @@ MVP: yes
 - [ ] A highlighted visual outline pinpoints the exact physical location of the machine on the floor.
 - [ ] The map renders clearly within 2 seconds on mobile web browsers without any clipping or broken/bad scaling.
 
-## US3: Filter equipment by floor, room, category, and availability
+## US3: Filter equipment by floor, room, category, and operational condition
 As a Pitt community member, I want to filter equipment listings by floor, room, category, and current availability so I can find available machines in my current workout area/floor.
 FR: FR3, FR11
 Priority: Should
@@ -37,9 +37,9 @@ FR: FR4, FR10
 Priority: Must
 MVP: yes
 
-- [ ] Every equipment profile displays an unambiguous condition badge: "Available", "Under Maintenance", or "Broken".
+- [ ] Every equipment profile displays an unambiguous condition badge: "Operational", "Under Maintenance", or "Out of Order".
 - [ ] The view contains an explicit label stating that the status represents the mechanical working order as opposed to the real-time occupancy of the machine.
-- [ ] For machines marked "Under Maintenance" or "Broken", the interface displays the date/time of the last gym employee verification and any optional gym employee notes.
+- [ ] For machines marked "Under Maintenance" or "Out of Order", the interface displays the date/time of the last gym employee verification and any optional gym employee notes.
 
 ## US5: Update equipment mechanical condition
 As a gym employee, I want to update a machine's operational status and attach notes so that gym visitors have up-to-date information on a machine's mechanical working order.
@@ -47,7 +47,7 @@ FR: FR4, FR6, FR10
 Priority: Must
 MVP: yes
 
-- [ ] Authorized gym employees can update a machine's status between "Available", "Under Maintenance", and "Broken".
+- [ ] Authorized gym employees can update a machine's status between "Operational", "Under Maintenance", and "Out of Order".
 - [ ] Gym employees can enter or edit an optional maintenance note when changing the status.
 - [ ] Submitting a status change automatically records that gym employee's ID and timestamp in the database.
 - [ ] Status updates are pushed out and reflect on the client side within 5 seconds of confirmation.
