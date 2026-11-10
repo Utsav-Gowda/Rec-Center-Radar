@@ -34,7 +34,7 @@ Rec-Center Radar is built on the **MERN** stack: MongoDB, Express, React, and No
 - **MongoDB Atlas (cloud, free tier).** Nobody has to install or run a database locally. Every teammate connects to the same shared cluster using a connection string in their own `.env` file.
 - **Mongoose.** MongoDB is schema-less, so Mongoose adds the validation we need: required fields, allowed status values (`Operational`, `Under Maintenance`, `Out of Order`), and a check that a machine's room actually belongs to its floor. It also builds the text index that powers equipment search by name, muscle group, workout type, and category.
 - **Express.** A small, widely used REST framework. Each subsystem gets its own router file (equipment, authentication, reports, announcements), so the code layout matches our subsystem decomposition and teammates can work in parallel with few merge conflicts.
-- **React.** Component based, so each UI subsystem (Equipment Portal, Gym Employee UI, Report Portal) is its own folder of components. A responsive layout lets the same app work on phones at the gym and on desktops.
+- **React.** Component based: `PittCommunityMemberUI` groups the Equipment Portal and Report Portal, while `GymEmployeeUI` is a sibling folder for employee workflows. A responsive layout lets the same app work on phones at the gym and on desktops.
 - **Vite.** Fast dev server with hot reload. Its dev proxy forwards `/api` requests to the Express server on port 5000, so the browser sees a single origin and we do not need CORS setup during development.
 - **Separate history collections.** Current machine status is stored on the `Equipment` document for fast reads. Every change is also written to `StatusUpdate` or `Relocation`, so we keep a full audit history without slowing down the main search.
 
@@ -42,9 +42,10 @@ Rec-Center Radar is built on the **MERN** stack: MongoDB, Express, React, and No
 
 | Subsystem | Layer | Folder / File | Responsibility |
 |-----------|-------|---------------|----------------|
-| Equipment Portal (Pitt community member UI) | UI | `client/src/components/EquipmentPortal/` | Search, browse, and view equipment status and location |
+| Pitt Community Member UI | UI | `client/src/components/PittCommunityMemberUI/` | Groups the community member equipment and reporting workflows |
+| Equipment Portal | UI | `client/src/components/PittCommunityMemberUI/EquipmentPortal/` | Search, browse, and view equipment status and location |
 | Gym Employee UI | UI | `client/src/components/GymEmployeeUI/` | Employees register equipment and update status and location |
-| Report Portal | UI | `client/src/components/ReportPortal/` | Users report broken or missing equipment |
+| Report Portal | UI | `client/src/components/PittCommunityMemberUI/ReportPortal/` | Users report broken or missing equipment (placeholder) |
 | Server entry point | Router | `server/src/index.js` | Loads `.env`, connects to the database, registers models, starts Express |
 | Equipment router | Router | `server/src/routes/equipmentRoutes.js` | Equipment search, details, status, and relocation endpoints |
 | Authentication router | Router | `server/src/routes/authRoutes.js` | Sign-in and roles (Pitt Passport SSO) |
@@ -52,6 +53,34 @@ Rec-Center Radar is built on the **MERN** stack: MongoDB, Express, React, and No
 | Announcement router | Router | `server/src/routes/announcementRoutes.js` | Gym announcements |
 | Database connection | Storage | `server/src/config/db.js` | Connects to MongoDB Atlas using `MONGODB_URI` |
 | Data models | Storage | `server/src/models/` | Mongoose schemas: `Floor` (with embedded rooms), `Equipment`, `StatusUpdate`, `Relocation`, and shared `constants.js` |
+
+The client folders mirror the UI decomposition:
+
+```text
+client/src/components/
+├── PittCommunityMemberUI/
+│   ├── EquipmentPortal/
+│   │   ├── EquipmentPortal.jsx
+│   │   ├── EquipmentList.jsx
+│   │   └── StatusBadge.jsx
+│   └── ReportPortal/       # placeholder
+└── GymEmployeeUI/          # placeholder
+```
+
+`App.jsx` renders the Equipment Portal from its new location. Its internal
+imports remain relative to the portal folder. This reorganization does not add
+API endpoints or change client behavior.
+
+### Router integration dependency
+
+[Issue #16](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/16) tracks
+the Express health endpoint, equipment endpoint, and subsystem router mounts.
+It remains open; its implementation is not included in this structure/docs change.
+The client already requests `GET /api/health` and `GET /api/equipment`, but
+neither endpoint exists yet. The four router files are empty and unmounted.
+Confirm the remaining mount paths against the final diagrams when integrating
+issue #16. The current server entry point is `server/src/index.js` (the issue
+description refers to `server/server.js`).
 
 ## Prerequisites
 
@@ -158,7 +187,7 @@ Then open **http://localhost:5173** in your browser. Vite forwards any request t
 - **Express server:** Starts, parses JSON, and registers all models on startup.
 - **Subsystem folder structure:** Folders and router files exist for every subsystem, so teammates can work in parallel.
 - **React client skeleton:** The Equipment Portal page renders an equipment list with status badges and a responsive layout. It builds successfully with Vite.
-- **Deployment diagram:** Located in `docs/`.
+- **Diagram draft:** The existing deployment diagram is in `docs/`. Final deployment and component diagrams and the editable `.drawio` source will be added separately; see [diagram documentation](docs/README.md).
 
 ### What does not work yet
 
@@ -177,3 +206,8 @@ Then open **http://localhost:5173** in your browser. Vite forwards any request t
 - `client/`: React frontend (UI subsystems)
 - `server/`: Express backend (router and storage subsystems)
 - `docs/`: Project documentation and diagrams
+
+## GenAI Use
+
+All team members—Utsav Gowda, Joshua Sakolsky-Madaras, Brian Simon, Ishay
+Wirthiem, and Devin Gilson—used GenAI for boilerplate code and checking work.
