@@ -1,0 +1,24 @@
+digraph G {
+  rankdir=LR; fontname="Helvetica"; node [fontname="Helvetica", fontsize=11]; edge [fontname="Helvetica", fontsize=10];
+  subgraph cluster_laptop {
+    label="«device»\nTeam member laptop (Windows / macOS)"; style=filled; fillcolor="#F4F6F8"; color="#333333";
+    subgraph cluster_browser { label="«execution environment»\nWeb browser (Chrome)"; style=filled; fillcolor="#FFFFFF";
+      ui [shape=component, label="Equipment Portal\n(PittCommunityMemberUI)\nVite dev server :5173\nWORKING", style=filled, fillcolor="#C8E6C9"];
+      gui [shape=component, label="GymEmployeeUI\n+ Report Portal\nplaceholder folders", style="filled,dashed", fillcolor="#EEEEEE"];
+    }
+    subgraph cluster_node { label="«execution environment»\nNode.js 18+ process :5000"; style=filled; fillcolor="#FFFFFF";
+      eq [shape=component, label="Express server (PR #21)\nconnects to Atlas\n/api/health + /api/equipment: TO ADD", style="filled,dashed", fillcolor="#FFF9C4"];
+      oth [shape=component, label="Authentication, Report,\nAnnouncement routers\nstubs (HTTP 501)", style="filled,dashed", fillcolor="#EEEEEE"];
+    }
+  }
+  subgraph cluster_mongo { label="«device»\nMongoDB Atlas (cloud, free tier)"; style=filled; fillcolor="#F4F6F8"; color="#333333";
+    db [shape=cylinder, label="Storage subsystem\nFloor, Equipment, StatusUpdate,\nRelocation collections\nWORKING (schemas)", style=filled, fillcolor="#C8E6C9"];
+  }
+  pp [shape=box3d, label="«external system»\nPitt Passport SSO\nNOT CONNECTED YET", style="filled,dashed", fillcolor="#FFF9C4"];
+  cloud [shape=box3d, label="«planned hosting»\nVercel (client) / Render (server)\nNOT DEPLOYED YET", style="filled,dashed", fillcolor="#FFF9C4"];
+  ui -> eq [label="HTTP/JSON (REST)\nproxied /api"];
+  eq -> db [label="MongoDB protocol over TLS\n(Mongoose, mongodb+srv)"];
+  oth -> pp [label="HTTPS (SAML/OIDC)\nplanned", style=dashed];
+  gui -> oth [label="HTTP/JSON\nplanned", style=dashed];
+  oth -> cloud [style=invis];
+}

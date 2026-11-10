@@ -1,0 +1,27 @@
+:root { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #1a1a1a; background: #f5f7fa; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+img, svg { max-width: 100%; height: auto; }
+
+/* Responsive container: fluid on phones, centered and capped on large screens (NFR7). */
+.container { width: 100%; max-width: 960px; margin: 0 auto; padding: 12px 16px; }
+.site-header h1 { font-size: clamp(1.4rem, 4vw, 2rem); margin: 8px 0 4px; }
+.status-line { font-size: 0.85rem; color: #555; margin: 0 0 12px; }
+
+/* One column on phones, two on tablets, three on desktops. */
+.equipment-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 600px) { .equipment-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 900px) { .equipment-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.equipment-card { background: #fff; border: 1px solid #dde3ea; border-radius: 10px; padding: 12px 14px; overflow-wrap: anywhere; }
+.equipment-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.equipment-card .meta { margin: 0 0 8px; color: #555; font-size: 0.9rem; }
+
+/* Condition badges (FR4). Text labels carry the meaning, not just color. */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+.badge-operational { background: #d9f2e0; color: #14602b; }
+.badge-maintenance { background: #fff1c9; color: #7a5200; }
+.badge-out { background: #fbd9d9; color: #8a1c1c; }
+.badge-unknown { background: #e6e9ee; color: #444; }
+
+.message { background: #fff; border: 1px dashed #b9c2cf; border-radius: 10px; padding: 16px; }
