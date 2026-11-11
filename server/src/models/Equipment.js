@@ -30,7 +30,7 @@ const equipmentSchema = new Schema(
   { timestamps: true } // createdAt doubles as registeredAt (AOM attribute)
 );
 
-// Search by name, workout type, muscle group, or category (FR1, NFR1).
+// Available for word-based search. US1 uses escaped regex for partial matches.
 equipmentSchema.index(
   { name: 'text', workoutType: 'text', muscleGroups: 'text', category: 'text' },
   { name: 'equipment_search', weights: { name: 5, muscleGroups: 3, workoutType: 2, category: 1 } }
