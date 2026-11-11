@@ -1,5 +1,5 @@
 import React from 'react';
-import EquipmentPortal from './components/EquipmentPortal/EquipmentPortal.jsx';
+import EquipmentPortal from './components/PittCommunityMemberUI/EquipmentPortal/EquipmentPortal.jsx';
 
 export default function App() {
   return (
