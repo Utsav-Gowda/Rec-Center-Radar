@@ -32,7 +32,7 @@ Rec-Center Radar is built on the **MERN** stack: MongoDB, Express, React, and No
 - **One language end to end.** React, Express, and Node.js all use JavaScript. Every team member can work on any subsystem without switching languages, and the JSON our API returns matches the objects the client renders.
 - **MongoDB instead of PostgreSQL.** Our original plan named PostgreSQL. We switched to MongoDB because our data is document shaped. A floor owns its rooms, so rooms are embedded inside each `Floor` document (the composition in our analysis object model) rather than living in a separate joined table. Equipment records also vary by machine, for example the list of muscle groups, and a flexible schema handles that cleanly.
 - **MongoDB Atlas (cloud, free tier).** Nobody has to install or run a database locally. Every teammate connects to the same shared cluster using a connection string in their own `.env` file.
-- **Mongoose.** MongoDB is schema-less, so Mongoose adds the validation we need: required fields, allowed status values (`Operational`, `Under Maintenance`, `Out of Order`), and a check that a machine's room actually belongs to its floor. It also builds the text index that powers equipment search by name, muscle group, workout type, and category.
+- **Mongoose.** MongoDB is schema-less, so Mongoose adds the validation we need: required fields, allowed status values (`Operational`, `Under Maintenance`, `Out of Order`), and a check that a machine's room actually belongs to its floor. US1 searches name, workout type, and muscle groups using escaped, case-insensitive substring matching. The schema also defines a text index for future word-based search.
 - **Express.** A small, widely used REST framework. Each subsystem gets its own router file (equipment, authentication, reports, announcements), so the code layout matches our subsystem decomposition and teammates can work in parallel with few merge conflicts.
 - **React.** Component based: `PittCommunityMemberUI` groups the Equipment Portal and Report Portal, while `GymEmployeeUI` is a sibling folder for employee workflows. A responsive layout lets the same app work on phones at the gym and on desktops.
 - **Vite.** Fast dev server with hot reload. Its dev proxy forwards `/api` requests to the Express server on port 5000, so the browser sees a single origin and we do not need CORS setup during development.
@@ -46,7 +46,7 @@ Rec-Center Radar is built on the **MERN** stack: MongoDB, Express, React, and No
 | Equipment Portal | UI | `client/src/components/PittCommunityMemberUI/EquipmentPortal/` | Search, browse, and view equipment status and location |
 | Gym Employee UI | UI | `client/src/components/GymEmployeeUI/` | Employees register equipment and update status and location |
 | Report Portal | UI | `client/src/components/PittCommunityMemberUI/ReportPortal/` | Users report broken or missing equipment (placeholder) |
-| Server entry point | Router | `server/src/index.js` | Loads `.env`, connects to the database, registers models, starts Express |
+| Server entry point | Router | `server/server.js` | Loads `.env`, connects to the database, mounts subsystem routers, starts Express |
 | Equipment router | Router | `server/src/routes/equipmentRoutes.js` | Equipment search, details, status, and relocation endpoints |
 | Authentication router | Router | `server/src/routes/authRoutes.js` | Sign-in and roles (Pitt Passport SSO) |
 | Report router | Router | `server/src/routes/reportRoutes.js` | Equipment problem reports |
@@ -67,20 +67,35 @@ client/src/components/
 └── GymEmployeeUI/          # placeholder
 ```
 
-`App.jsx` renders the Equipment Portal from its new location. Its internal
-imports remain relative to the portal folder. This reorganization does not add
-API endpoints or change client behavior.
+`App.jsx` renders the Equipment Portal. Its internal imports remain relative to
+the portal folder.
 
-### Router integration dependency
+### API routes
 
-[Issue #16](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/16) tracks
-the Express health endpoint, equipment endpoint, and subsystem router mounts.
-It remains open; its implementation is not included in this structure/docs change.
-The client already requests `GET /api/health` and `GET /api/equipment`, but
-neither endpoint exists yet. The four router files are empty and unmounted.
-Confirm the remaining mount paths against the final diagrams when integrating
-issue #16. The current server entry point is `server/src/index.js` (the issue
-description refers to `server/server.js`).
+The server configuration from [issue #16](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/16)
+is merged. Start `server/server.js` using `npm start`; the older `server/src/index.js`
+does not mount the API routers.
+
+| Path | Current behavior |
+|------|------------------|
+| `GET /api/health` | Reports API and database status |
+| `GET /api/equipment` | Lists equipment with resolved floor and room names |
+| `GET /api/equipment?q=Biceps` | Searches names, workout types, and muscle groups (US1) |
+| `/api/reports` | Mounted placeholder returning HTTP 501 |
+| `/api/announcements` | Mounted placeholder returning HTTP 501 |
+| `/api/auth` | Mounted placeholder returning HTTP 501 |
+
+### Equipment search (US1)
+
+Type a machine name, workout type, or muscle group into **Search equipment**.
+For example, try `Squat Rack`, `Strength Training`, or `Biceps`. Matching is
+case-insensitive and accepts partial text. Each card shows the machine name,
+category, assigned floor, workout type, and mechanical condition. An unmatched
+search suggests checking spelling or changing terms. **Clear search** restores
+the catalog, and failed requests provide **Retry search**.
+
+See [US1 implementation and verification](docs/equipment-search.md) for the API
+contract, test commands, and the limits of the 1.5-second performance check.
 
 ## Prerequisites
 
@@ -143,14 +158,14 @@ In MongoDB Atlas, go to **Network Access** and add your current IP address. If y
 Run this from inside the `server/` folder so `dotenv` finds your `.env` file:
 
 ```bash
-node src/index.js
+npm start
 ```
 
 If it worked, you will see:
 
 ```
 MongoDB Atlas connected: <host> / database "<name>"
-Server listening on port 5000
+Rec Center Radar API listening on port 5000
 ```
 
 If you see `MONGODB_URI is not set`, your `.env` file is missing or you started the server from the wrong folder.
@@ -172,11 +187,15 @@ Then open **http://localhost:5173** in your browser. Vite forwards any request t
 | Where | Command | What it does |
 |-------|---------|--------------|
 | `server/` | `npm install` | Install server dependencies |
-| `server/` | `node src/index.js` | Start the API server on port 5000 |
+| `server/` | `npm start` | Start the API server with its mounted routers on port 5000 |
+| `server/` | `npm run seed` | Replace floor/equipment data in a dedicated development database with sample data |
+| `server/` | `npm test` | Test the API against disposable local MongoDB |
 | `client/` | `npm install` | Install client dependencies |
 | `client/` | `npm run dev` | Start the Vite dev server on port 5173 |
 | `client/` | `npm run build` | Build the production bundle into `client/dist/` |
 | `client/` | `npm run preview` | Preview the production build locally |
+| `client/` | `npm test` | Test search UI behavior |
+| `client/` | `npm run test:integration` | Test React input through real HTTP/MongoDB back to rendered results (install both packages first) |
 
 ## Project Status
 
@@ -184,21 +203,22 @@ Then open **http://localhost:5173** in your browser. Vite forwards any request t
 
 - **MongoDB Atlas connection:** The server connects to the shared Atlas cluster and fails with a clear error if `MONGODB_URI` is missing or the cluster cannot be reached.
 - **Data models (storage subsystem):** Mongoose schemas for `Floor` (with embedded rooms), `Equipment`, `StatusUpdate`, and `Relocation`. They include validation (allowed statuses, room must belong to its floor, unique room names per floor) and indexes for text search and filtering.
-- **Express server:** Starts, parses JSON, and registers all models on startup.
+- **Express server:** Starts, parses JSON, exposes health/equipment endpoints, and mounts subsystem routers.
 - **Subsystem folder structure:** Folders and router files exist for every subsystem, so teammates can work in parallel.
-- **React client skeleton:** The Equipment Portal page renders an equipment list with status badges and a responsive layout. It builds successfully with Vite.
+- **Equipment search (US1):** Search by name, workout type, or muscle group, with name/category/floor results, spelling guidance for no matches, loading feedback, and retry on errors.
+- **React client:** The Equipment Portal renders equipment cards with status badges and a responsive layout. It builds successfully with Vite.
+- **Seed data:** `server/src/data/seedEquipment.js` supplies sample floors and machines. `npm run seed` replaces the configured database's Floor and Equipment collections; use a dedicated development database.
+- **Search tests:** API, UI, and combined React/HTTP/MongoDB tests are available through the commands above. Tests use disposable databases and do not seed Atlas.
 - **Diagram draft:** The existing deployment diagram is in `docs/`. Final deployment and component diagrams and the editable `.drawio` source will be added separately; see [diagram documentation](docs/README.md).
 
 ### What does not work yet
 
-- **API endpoints:** All four router files (`equipment`, `auth`, `report`, `announcement`) are empty, and the server does not mount any routes yet. Because `/api/equipment` does not exist yet, the client shows "Could not load equipment."
+- **Remaining subsystem APIs:** Authentication, reports, and announcements are mounted placeholders returning HTTP 501. Equipment search and the health endpoint are implemented.
 - **Pitt Passport SSO:** Not connected. We still do not know whether we can get access as students or will need to simulate login during development. Until then, employee actions store a Pitt ID string as a placeholder because there is no `User` model.
 - **WebSockets / live status updates:** Not implemented. Users have to refresh to see status changes.
 - **Gym Employee UI and Report Portal:** Only placeholder folders so far (planned for Sprint 5).
 - **Floor map:** The data model stores floor plans and marker positions, but the map view is not built yet.
-- **Seed data:** The database starts empty, and there is no seed script yet.
 - **Hosting:** Not deployed yet. We plan to host the client on Vercel and the server on Render.
-- **Automated tests:** None yet.
 
 ## Repository Contents
 

@@ -8,6 +8,15 @@ img, svg { max-width: 100%; height: auto; }
 .site-header h1 { font-size: clamp(1.4rem, 4vw, 2rem); margin: 8px 0 4px; }
 .status-line { font-size: 0.85rem; color: #555; margin: 0 0 12px; }
 
+.equipment-search label { display: block; font-weight: 600; }
+.equipment-search p { margin: 4px 0 10px; color: #555; font-size: 0.9rem; }
+.search-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.search-controls input { flex: 1 1 240px; min-width: 0; border: 1px solid #8895a7; border-radius: 6px; padding: 10px 12px; font: inherit; }
+button { border: 1px solid #8895a7; border-radius: 6px; padding: 10px 12px; font: inherit; background: #fff; color: #1a1a1a; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+input:focus-visible, button:focus-visible { outline: 3px solid #245db1; outline-offset: 2px; }
+.search-summary { overflow-wrap: anywhere; }
+
 /* One column on phones, two on tablets, three on desktops. */
 .equipment-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: 1fr; }
 @media (min-width: 600px) { .equipment-grid { grid-template-columns: repeat(2, 1fr); } }
