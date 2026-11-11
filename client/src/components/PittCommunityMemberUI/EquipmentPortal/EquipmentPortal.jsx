@@ -6,7 +6,7 @@ export default function EquipmentPortal() {
   const [health, setHealth] = useState('checking...');
 
   useEffect(() => {
-    fetch('/api/health').then((r) => r.json()).then((h) => setHealth(`server ${h.server}, database ${h.database}`))
+    fetch('/api/health').then((r) => r.json()).then((h) => setHealth(`server ${h.status}, database ${h.database}`))
       .catch(() => setHealth('server unreachable'));
   }, []);
 
