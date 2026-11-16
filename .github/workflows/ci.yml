@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install server dependencies
+        run: npm ci --prefix server
+
+      - name: Install client dependencies
+        run: npm ci --prefix client
+
+      - name: Run server tests
+        run: npm run test --if-present --prefix server
+
+      - name: Run client unit tests
+        run: npm run test --if-present --prefix client
+
+      - name: Run full-stack integration tests
+        run: npm run test:integration --if-present --prefix client
+
+      - name: Build client production bundle
+        run: npm run build --prefix client
