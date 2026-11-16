@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # D_Store Ignore
 .DS_Store
+
+# VS Code
+.vscode

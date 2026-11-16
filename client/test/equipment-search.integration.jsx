@@ -6,6 +6,7 @@ import { transferableAbortController } from 'node:util';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import EquipmentList from '../src/components/PittCommunityMemberUI/EquipmentPortal/EquipmentList.jsx';
+import App from '../src/App.jsx';
 
 // This suite spans both packages. Run npm ci in client/ and server/ first.
 const serverRequire = createRequire(resolve('../server/package.json'));
@@ -16,6 +17,8 @@ const Floor = mongoose.model('Floor');
 const Equipment = mongoose.model('Equipment');
 const { floors, equipment } = serverRequire('./src/data/seedEquipment');
 const nativeFetch = globalThis.fetch;
+const serverProcess = serverRequire('node:process');
+const originalDemoMode = serverProcess.env.DEMO_EMPLOYEE_MODE;
 let database;
 let server;
 let origin;
@@ -33,15 +36,60 @@ beforeAll(async () => {
   origin = `http://127.0.0.1:${server.address().port}`;
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  if (mongoose.connection.readyState === 1) await Equipment.deleteMany({ registeredBy: 'demo-employee' });
 });
 
 afterAll(async () => {
   if (server) await new Promise((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
   await mongoose.disconnect();
   if (database) await database.stop();
+  if (originalDemoMode === undefined) delete serverProcess.env.DEMO_EMPLOYEE_MODE;
+  else serverProcess.env.DEMO_EMPLOYEE_MODE = originalDemoMode;
+});
+
+test('demo role → registration → shared database → refreshed search and map', async () => {
+  serverProcess.env.DEMO_EMPLOYEE_MODE = 'true';
+  // Exercise the direct API URLs used by the Pages build, without the Vite proxy.
+  vi.stubEnv('VITE_API_BASE_URL', origin);
+  vi.stubGlobal('AbortController', transferableAbortController().constructor);
+  vi.stubGlobal('fetch', (url, options) => {
+    expect(url.startsWith(`${origin}/api/`)).toBe(true);
+    return nativeFetch(url, options);
+  });
+  render(<App />);
+  const role = await screen.findByRole('checkbox', { name: 'View as gym employee (demo)' });
+  expect(screen.queryByRole('heading', { name: 'Register equipment' })).toBeNull();
+  fireEvent.click(role);
+  await screen.findByRole('button', { name: 'Register equipment' });
+  const floor = await Floor.findOne({ floorNumber: 2 });
+  for (const [name, value] of [
+    ['Equipment name (required)', 'Sprint Registration Machine'], ['Category (required)', 'Machines'],
+    ['Workout type (required)', 'Strength Training'], ['Muscle groups (comma separated, optional)', 'Biceps'],
+    ['Floor (required)', String(floor._id)], ['Assigned room (required)', String(floor.rooms[0]._id)],
+    ['X position (%) (required)', '25'], ['Y position (%) (required)', '50'],
+  ]) fireEvent.change(screen.getByLabelText(name), { target: { value } });
+  fireEvent.click(screen.getByRole('button', { name: 'Register equipment' }));
+  await screen.findByText(/Registered Sprint Registration Machine as demo-employee/);
+  const searchResults = await screen.findByRole('list', { name: 'Equipment results' });
+  await within(searchResults).findByRole('heading', { name: 'Sprint Registration Machine' });
+  const marker = await screen.findByRole('button', { name: 'Sprint Registration Machine, Weight Room' });
+  expect(marker.style.left).toBe('25%');
+  expect(marker.style.top).toBe('50%');
+  expect(marker.getAttribute('aria-pressed')).toBe('true');
+  expect(screen.getByLabelText('Map floor').value).toBe(String(floor._id));
+  const stored = await Equipment.findOne({ name: 'Sprint Registration Machine' }).lean();
+  expect(stored.registeredBy).toBe('demo-employee');
+  expect(Number.isFinite(Date.parse(stored.createdAt.toISOString()))).toBe(true);
+
+  // A second client request sees the same persisted record, rather than browser-only state.
+  const otherClient = await nativeFetch(`${origin}/api/equipment?q=Sprint%20Registration`);
+  expect((await otherClient.json()).data[0]._id).toBe(String(stored._id));
+  fireEvent.click(role);
+  expect(screen.queryByRole('heading', { name: 'Register equipment' })).toBeNull();
 });
 
 test('input → HTTP API → MongoDB → rendered cards satisfies all three acceptance examples', async () => {

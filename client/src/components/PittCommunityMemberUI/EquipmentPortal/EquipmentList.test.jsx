@@ -111,13 +111,13 @@ test('rejects malformed API data instead of silently showing no matches', async 
   expect(screen.queryByText(/No equipment/)).toBeNull();
 });
 
-test('renders an unnamed floor number including zero, or a clear missing-floor fallback', async () => {
+test.each([0, 2])('prefixes an unnamed floor %s and renders a clear missing-floor fallback', async (floorNumber) => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([
-    { ...squatRack, floor: { floorNumber: 0 } },
+    { ...squatRack, floor: { floorNumber } },
     { ...cableMachine, floor: null },
   ])));
   render(<EquipmentList />);
   await screen.findByRole('heading', { name: 'Squat Rack' });
-  expect(screen.getByText('0')).toBeTruthy();
+  expect(screen.getByText(`Floor ${floorNumber}`)).toBeTruthy();
   expect(screen.getByText('Not assigned')).toBeTruthy();
 });
