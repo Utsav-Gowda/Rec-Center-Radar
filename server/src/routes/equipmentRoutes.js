@@ -2,6 +2,9 @@ const express = require('express');
 const Equipment = require('../models/Equipment');
 // Population also needs the Floor model when server.js is the entry point.
 require('../models/Floor');
+const requireDemoEmployee = require('../middleware/requireDemoEmployee');
+const equipmentResponse = require('../utils/equipmentResponse');
+const validateRegistration = require('../utils/validateEquipmentRegistration');
 
 const router = express.Router();
 
@@ -27,22 +30,31 @@ router.get('/', async (req, res) => {
 
   const items = await Equipment.find(filter)
     .maxTimeMS(1000)
-    .populate('floor', 'floorNumber name rooms')
+    .populate('floor', 'floorNumber name floorPlanUrl rooms')
     .sort({ name: 1, _id: 1 })
     .lean();
 
-  const data = items.map((item) => {
-    const room = item.floor?.rooms?.find((r) => r._id.equals(item.room));
-    return {
-      ...item,
-      floor: item.floor
-        ? { _id: item.floor._id, floorNumber: item.floor.floorNumber, name: item.floor.name }
-        : null,
-      room: room ? { _id: room._id, name: room.name } : { _id: item.room, name: null },
-    };
-  });
+  const data = items.map(equipmentResponse);
 
-  res.status(200).json({ count: data.length, data });
+  res.set('Cache-Control', 'no-store').status(200).json({ count: data.length, data });
+});
+
+// US7. Audit identity and timestamps come from the server, never from the body.
+router.post('/', requireDemoEmployee, async (req, res, next) => {
+  const { data, errors } = validateRegistration(req.body);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Check the highlighted fields.', errors });
+  }
+  try {
+    // create() runs the model's room-belongs-to-floor validation hook.
+    const item = await Equipment.create({ ...data, registeredBy: req.employee.id });
+    await item.populate('floor', 'floorNumber name floorPlanUrl rooms');
+    res.status(201).json({ data: equipmentResponse(item.toObject()) });
+  } catch (error) {
+    if (error.name !== 'ValidationError') return next(error);
+    const fieldErrors = Object.fromEntries(Object.entries(error.errors).map(([field, detail]) => [field, detail.message]));
+    return res.status(400).json({ error: 'Check the highlighted fields.', errors: fieldErrors });
+  }
 });
 
 module.exports = router;

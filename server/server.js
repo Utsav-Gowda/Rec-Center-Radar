@@ -9,6 +9,7 @@ const equipmentRoutes = require('./src/routes/equipmentRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const announcementRoutes = require('./src/routes/announcementRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const floorRoutes = require('./src/routes/floorRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => {
 
 // Subsystem routers
 app.use('/api/equipment', equipmentRoutes);
+app.use('/api/floors', floorRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/auth', authRoutes);
@@ -57,7 +59,7 @@ app.use((err, req, res, next) => {
 async function start() {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Rec Center Radar API listening on port ${PORT}`);
     });
   } catch (err) {

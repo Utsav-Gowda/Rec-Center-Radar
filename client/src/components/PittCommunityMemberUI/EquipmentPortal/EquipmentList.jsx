@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import StatusBadge from './StatusBadge.jsx';
+import { apiUrl } from '../../../api.js';
 
-// Fetches equipment from the server. The Vite dev proxy (vite.config.js) forwards
-// /api to http://localhost:5000, so no CORS setup is needed in development.
-export default function EquipmentList() {
+// Uses the local Vite proxy or the public API origin supplied to a hosted build.
+export default function EquipmentList({ refreshKey = 0 }) {
   const [query, setQuery] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState({ query: null, items: [], error: false });
@@ -18,7 +18,7 @@ export default function EquipmentList() {
     const timer = setTimeout(async () => {
       try {
         const url = searchTerm ? `/api/equipment?q=${encodeURIComponent(searchTerm)}` : '/api/equipment';
-        const response = await fetch(url, { signal: controller.signal });
+        const response = await fetch(apiUrl(url), { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const payload = await response.json();
         if (!Array.isArray(payload.data)) throw new Error('Invalid equipment response');
@@ -35,7 +35,7 @@ export default function EquipmentList() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [searchTerm, attempt]);
+  }, [searchTerm, attempt, refreshKey]);
 
   function retry() {
     setResult({ query: null, items: [], error: false });
@@ -59,6 +59,7 @@ export default function EquipmentList() {
             onChange={(event) => setQuery(event.target.value)}
           />
           <button type="button" onClick={() => setQuery('')} disabled={!query}>Clear search</button>
+          <button type="button" onClick={retry} disabled={loading}>Refresh equipment</button>
         </div>
       </form>
 
@@ -81,7 +82,7 @@ export default function EquipmentList() {
             <li key={e._id} className="equipment-card">
               <h3>{e.name}</h3>
               <p className="meta">{e.category}{e.workoutType ? ` · ${e.workoutType}` : ''}</p>
-              <p className="meta"><strong>Floor:</strong> {e.floor?.name || (e.floor?.floorNumber != null ? e.floor.floorNumber : 'Not assigned')}</p>
+              <p className="meta"><strong>Floor:</strong> {e.floor?.name || (e.floor?.floorNumber != null ? `Floor ${e.floor.floorNumber}` : 'Not assigned')}</p>
               <StatusBadge status={e.status} />
             </li>
           ))}

@@ -3,6 +3,17 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Serialize main releases so an older build cannot publish after a newer one.
+# Superseded PR checks can be cancelled without interrupting a main deployment.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build-and-test:
@@ -14,7 +25,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install server dependencies
         run: npm ci --prefix server
@@ -23,13 +34,41 @@ jobs:
         run: npm ci --prefix client
 
       - name: Run server tests
-        run: npm run test --if-present --prefix server
+        run: npm run test --prefix server
 
       - name: Run client unit tests
-        run: npm run test --if-present --prefix client
+        run: npm run test --prefix client
 
       - name: Run full-stack integration tests
-        run: npm run test:integration --if-present --prefix client
+        run: npm run test:integration --prefix client
 
       - name: Build client production bundle
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://rec-center-radar-api.onrender.com' }}
+          PAGES_BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run build --prefix client
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: client/dist
+
+  deploy-pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

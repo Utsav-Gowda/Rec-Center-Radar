@@ -14,7 +14,7 @@ img, svg { max-width: 100%; height: auto; }
 .search-controls input { flex: 1 1 240px; min-width: 0; border: 1px solid #8895a7; border-radius: 6px; padding: 10px 12px; font: inherit; }
 button { border: 1px solid #8895a7; border-radius: 6px; padding: 10px 12px; font: inherit; background: #fff; color: #1a1a1a; cursor: pointer; }
 button:disabled { opacity: 0.5; cursor: default; }
-input:focus-visible, button:focus-visible { outline: 3px solid #245db1; outline-offset: 2px; }
+input:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid #245db1; outline-offset: 2px; }
 .search-summary { overflow-wrap: anywhere; }
 
 /* One column on phones, two on tablets, three on desktops. */
@@ -34,3 +34,25 @@ input:focus-visible, button:focus-visible { outline: 3px solid #245db1; outline-
 .badge-unknown { background: #e6e9ee; color: #444; }
 
 .message { background: #fff; border: 1px dashed #b9c2cf; border-radius: 10px; padding: 16px; }
+
+.demo-role, .employee-panel, .map-panel { margin: 20px 0; padding: 16px; border: 1px solid #cbd4df; border-radius: 10px; background: #fff; }
+.demo-role p { margin-bottom: 0; color: #555; }
+.registration-form fieldset { border: 0; padding: 0; min-width: 0; }
+.registration-form legend { font-weight: 600; margin-bottom: 12px; }
+.registration-form label, .map-panel > label { display: block; margin: 12px 0 4px; font-weight: 600; }
+.registration-form input, .registration-form select, .map-panel > select { width: 100%; padding: 10px; border: 1px solid #8895a7; border-radius: 6px; font: inherit; background: #fff; }
+.registration-form [aria-invalid="true"] { border-color: #a51d2d; }
+.registration-form button { margin-top: 16px; }
+.coordinate-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field-error { color: #a51d2d; margin: 4px 0; }
+.success-message { padding: 12px; background: #d9f2e0; color: #14602b; overflow-wrap: anywhere; }
+.map-note { color: #555; }
+.map-padding { padding: 20px; }
+.floor-map { position: relative; border: 1px solid #9caec4; background-color: #f5f7fa; background-image: linear-gradient(#dde3ea 1px, transparent 1px), linear-gradient(90deg, #dde3ea 1px, transparent 1px); background-size: 10% 10%; }
+.floor-map img { display: block; width: 100%; height: 100%; }
+.map-marker { position: absolute; transform: translate(-50%, -50%); padding: 0; width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; background: #245db1; color: #fff; font-size: 0.85rem; }
+.map-marker[aria-pressed="true"] { background: #812282; box-shadow: 0 0 0 3px #81228255; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 8px 28px; padding-left: 24px; }
+.map-legend li { min-width: 0; max-width: 100%; }
+.map-legend button { max-width: 100%; overflow-wrap: anywhere; }
+.map-legend button[aria-pressed="true"] { border-color: #812282; font-weight: 600; }
