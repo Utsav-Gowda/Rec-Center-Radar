@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import EquipmentPortal from './components/PittCommunityMemberUI/EquipmentPortal/EquipmentPortal.jsx';
 import RegisterEquipment from './components/GymEmployeeUI/RegisterEquipment.jsx';
+import UpdateEquipmentStatus from './components/GymEmployeeUI/UpdateEquipmentStatus.jsx';
 import FloorMap from './components/PittCommunityMemberUI/EquipmentPortal/FloorMap.jsx';
 import { apiUrl } from './api.js';
 
@@ -35,7 +36,15 @@ export default function App() {
         <label><input type="checkbox" checked={employee} onChange={(event) => setEmployee(event.target.checked)} /> View as gym employee (demo)</label>
         <p>Current role: {employee ? 'Gym employee' : 'Pitt community member'}. This demo switch is not Pitt Passport sign-in.</p>
       </fieldset> : null}
-      {demoEnabled && employee ? <RegisterEquipment onCreated={registered} /> : null}
+      {demoEnabled && employee ? (
+        <>
+          <UpdateEquipmentStatus
+            refreshKey={refreshKey}
+            onUpdated={() => setRefreshKey((value) => value + 1)}
+          />
+          <RegisterEquipment onCreated={registered} />
+        </>
+      ) : null}
       <EquipmentPortal refreshKey={refreshKey} />
       <FloorMap refreshKey={refreshKey} focusEquipment={registeredEquipment} />
     </main>

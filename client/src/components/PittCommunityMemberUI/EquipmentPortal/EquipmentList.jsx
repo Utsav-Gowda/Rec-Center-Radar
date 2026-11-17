@@ -36,6 +36,26 @@ export default function EquipmentList({ refreshKey = 0 }) {
       controller.abort();
     };
   }, [searchTerm, attempt, refreshKey]);
+  
+  // Propagate staff status updates to connected clients within 5 seconds.
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const url = searchTerm ? `/api/equipment?q=${encodeURIComponent(searchTerm)}` : '/api/equipment';
+        const response = await fetch(apiUrl(url));
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (Array.isArray(payload.data)) {
+          setResult((prev) => (prev.query === searchTerm ? { query: searchTerm, items: payload.data, error: false } : prev));
+        }
+      } catch {
+        // Keep current visible list on transient background poll failure.
+      }
+    }, 4000);
+
+    return () => clearInterval(intervalId);
+  }, [searchTerm]);
 
   function retry() {
     setResult({ query: null, items: [], error: false });

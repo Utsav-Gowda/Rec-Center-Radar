@@ -1,3 +1,7 @@
+const mongoose = require('mongoose');
+const StatusUpdate = require('../models/StatusUpdate');
+const { EQUIPMENT_STATUSES } = require('../models/constants');
+
 const express = require('express');
 const Equipment = require('../models/Equipment');
 // Population also needs the Floor model when server.js is the entry point.
@@ -37,6 +41,66 @@ router.get('/', async (req, res) => {
   const data = items.map(equipmentResponse);
 
   res.set('Cache-Control', 'no-store').status(200).json({ count: data.length, data });
+});
+
+// US5. Authorized gym employees update mechanical condition and attach optional notes (FR4, FR6, FR10).
+router.patch('/:id/status', requireDemoEmployee, async (req, res, next) => {
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ error: 'Invalid equipment ID.' });
+  }
+
+  const { status, statusNote } = req.body ?? {};
+  const errors = {};
+
+  if (typeof status !== 'string' || !EQUIPMENT_STATUSES.includes(status)) {
+    errors.status = `Status must be one of: ${EQUIPMENT_STATUSES.join(', ')}.`;
+  }
+
+  let normalizedNote = '';
+  if (statusNote !== undefined && statusNote !== null) {
+    if (typeof statusNote !== 'string') {
+      errors.statusNote = 'Maintenance note must be text.';
+    } else if (statusNote.includes('\0')) {
+      errors.statusNote = 'Maintenance note cannot contain null characters.';
+    } else if (statusNote.trim().length > 500) {
+      errors.statusNote = 'Maintenance note must be 500 characters or fewer.';
+    } else {
+      normalizedNote = statusNote.trim();
+    }
+  }
+
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Check the highlighted fields.', errors });
+  }
+
+  try {
+    const item = await Equipment.findById(id);
+    if (!item) {
+      return res.status(404).json({ error: 'Equipment not found.' });
+    }
+
+    const previousStatus = item.status;
+    const verifiedAt = new Date();
+
+    item.status = status;
+    item.statusNote = normalizedNote || undefined;
+    item.lastVerifiedAt = verifiedAt;
+    await item.save();
+
+    await StatusUpdate.create({
+      equipment: item._id,
+      previousStatus,
+      newStatus: status,
+      note: normalizedNote || undefined,
+      updatedBy: req.employee.id,
+    });
+
+    await item.populate('floor', 'floorNumber name floorPlanUrl rooms');
+    return res.status(200).json({ data: equipmentResponse(item.toObject()) });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 // US7. Audit identity and timestamps come from the server, never from the body.
