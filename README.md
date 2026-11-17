@@ -103,6 +103,10 @@ the catalog, and failed requests provide **Retry search**.
 See [US1 implementation and verification](docs/equipment-search.md) for the API
 contract, test commands, and the limits of the 1.5-second performance check.
 
+### Equipment condition & staff verification (US4)
+
+Each equipment card displays an unambiguous condition badge (`Operational`, `Under Maintenance`, or `Out of Order`). The portal explicitly notes that status reflects mechanical working order verified by gym staff rather than real-time availability or occupancy, and cards for `Under Maintenance` or `Out of Order` machines display the last staff verification timestamp and any optional staff notes.
+
 ### Equipment registration (US7) and demo roles
 
 Enable `DEMO_EMPLOYEE_MODE=true` on an API connected to a dedicated demo

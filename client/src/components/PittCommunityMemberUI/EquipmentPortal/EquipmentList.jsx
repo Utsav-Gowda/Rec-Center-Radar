@@ -63,6 +63,10 @@ export default function EquipmentList({ refreshKey = 0 }) {
         </div>
       </form>
 
+      <p className="status-disclaimer">
+        <strong>Note:</strong> Equipment status reflects mechanical working order verified by gym staff, not real-time availability or occupancy.
+      </p>
+
       <p role="status" aria-live="polite" aria-atomic="true" className="search-summary">
         {loading ? 'Searching equipment…' : error ? '' : items.length === 0
           ? searchTerm
@@ -78,14 +82,32 @@ export default function EquipmentList({ refreshKey = 0 }) {
       ) : null}
       {!loading && !error && items.length > 0 ? (
         <ul className="equipment-grid" aria-label="Equipment results">
-          {items.map((e) => (
-            <li key={e._id} className="equipment-card">
-              <h3>{e.name}</h3>
-              <p className="meta">{e.category}{e.workoutType ? ` · ${e.workoutType}` : ''}</p>
-              <p className="meta"><strong>Floor:</strong> {e.floor?.name || (e.floor?.floorNumber != null ? `Floor ${e.floor.floorNumber}` : 'Not assigned')}</p>
-              <StatusBadge status={e.status} />
-            </li>
-          ))}
+          {items.map((e) => {
+            const showVerification = e.status === 'Under Maintenance' || e.status === 'Out of Order';
+            const verifiedTime = e.lastVerifiedAt && !Number.isNaN(Date.parse(e.lastVerifiedAt))
+              ? new Date(e.lastVerifiedAt).toLocaleString()
+              : null;
+
+            return (
+              <li key={e._id} className="equipment-card">
+                <h3>{e.name}</h3>
+                <p className="meta">{e.category}{e.workoutType ? ` · ${e.workoutType}` : ''}</p>
+                <p className="meta"><strong>Floor:</strong> {e.floor?.name || (e.floor?.floorNumber != null ? `Floor ${e.floor.floorNumber}` : 'Not assigned')}</p>
+                <StatusBadge status={e.status} />
+                {showVerification ? (
+                  <div className="status-details">
+                    <p className="meta">
+                      <strong>Last verified by staff:</strong>{' '}
+                      {verifiedTime || 'Verification time unavailable'}
+                    </p>
+                    {e.statusNote ? (
+                      <p className="meta"><strong>Staff note:</strong> {e.statusNote}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </section>
