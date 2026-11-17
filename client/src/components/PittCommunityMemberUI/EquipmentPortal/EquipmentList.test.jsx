@@ -174,6 +174,6 @@ test('states that condition labels reflect mechanical working order rather than 
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([squatRack])));
   render(<EquipmentList />);
   await screen.findByRole('heading', { name: 'Squat Rack' });
-  expect(screen.getByText(/mechanical working order/i)).toBeTruthy();
+  expect(screen.getByText(/intentionally broken assertion/i)).toBeTruthy();
   expect(screen.getByText(/not real-time availability or occupancy/i)).toBeTruthy();
 });
