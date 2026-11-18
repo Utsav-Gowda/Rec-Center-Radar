@@ -121,3 +121,59 @@ test.each([0, 2])('prefixes an unnamed floor %s and renders a clear missing-floo
   expect(screen.getByText(`Floor ${floorNumber}`)).toBeTruthy();
   expect(screen.getByText('Not assigned')).toBeTruthy();
 });
+
+test('shows staff verification timestamp and optional notes only for Under Maintenance or Out of Order equipment', async () => {
+  const verifiedAt = '2026-11-16T14:30:00.000Z';
+  const expectedTimestamp = new Date(verifiedAt).toLocaleString();
+
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([
+    {
+      ...squatRack,
+      status: 'Operational',
+      lastVerifiedAt: verifiedAt,
+      statusNote: 'Should stay hidden while operational',
+    },
+    {
+      ...cableMachine,
+      _id: 'cable-1',
+      name: 'Cable Crossover Machine',
+      status: 'Under Maintenance',
+      lastVerifiedAt: verifiedAt,
+      statusNote: 'Left cable frayed; replacement part ordered.',
+    },
+    {
+      ...cableMachine,
+      _id: 'treadmill-1',
+      name: 'Treadmill',
+      status: 'Out of Order',
+      lastVerifiedAt: verifiedAt,
+    },
+  ])));
+
+  render(<EquipmentList />);
+  const operationalCard = (await screen.findByRole('heading', { name: 'Squat Rack' })).closest('li');
+  const maintenanceCard = screen.getByRole('heading', { name: 'Cable Crossover Machine' }).closest('li');
+  const outOfOrderCard = screen.getByRole('heading', { name: 'Treadmill' }).closest('li');
+
+  expect(within(operationalCard).getByText('Operational')).toBeTruthy();
+  expect(within(operationalCard).queryByText(/Last verified by staff:/i)).toBeNull();
+  expect(within(operationalCard).queryByText(/Should stay hidden while operational/)).toBeNull();
+
+  expect(within(maintenanceCard).getByText('Under Maintenance')).toBeTruthy();
+  expect(within(maintenanceCard).getByText(/Last verified by staff:/i)).toBeTruthy();
+  expect(within(maintenanceCard).getByText(expectedTimestamp)).toBeTruthy();
+  expect(within(maintenanceCard).getByText(/Left cable frayed; replacement part ordered\./)).toBeTruthy();
+
+  expect(within(outOfOrderCard).getByText('Out of Order')).toBeTruthy();
+  expect(within(outOfOrderCard).getByText(/Last verified by staff:/i)).toBeTruthy();
+  expect(within(outOfOrderCard).getByText(expectedTimestamp)).toBeTruthy();
+  expect(within(outOfOrderCard).queryByText(/Staff note:/i)).toBeNull();
+});
+
+test('states that condition labels reflect mechanical working order rather than real-time occupancy', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([squatRack])));
+  render(<EquipmentList />);
+  await screen.findByRole('heading', { name: 'Squat Rack' });
+  expect(screen.getByText(/mechanical working order/i)).toBeTruthy();
+  expect(screen.getByText(/not real-time availability or occupancy/i)).toBeTruthy();
+});

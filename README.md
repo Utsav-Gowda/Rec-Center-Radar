@@ -106,6 +106,9 @@ contract, test commands, and the limits of the 1.5-second performance check.
 ### Update equipment mechanical condition (US5)
 
 When `DEMO_EMPLOYEE_MODE=true` is enabled and **View as gym employee (demo)** is selected, the employee panel includes **Update equipment mechanical condition**. Select a machine from the catalog, choose `Operational`, `Under Maintenance`, or `Out of Order`, and optionally attach or edit a maintenance note. Submitting sends `PATCH /api/equipment/:id/status`, updates the equipment record and `lastVerifiedAt` timestamp, writes an immutable `StatusUpdate` audit log with the employee ID, and propagates the updated status to connected visitors within 5 seconds.
+### Equipment condition & staff verification (US4)
+
+Each equipment card displays an unambiguous condition badge (`Operational`, `Under Maintenance`, or `Out of Order`). The portal explicitly notes that status reflects mechanical working order verified by gym staff rather than real-time availability or occupancy, and cards for `Under Maintenance` or `Out of Order` machines display the last staff verification timestamp and any optional staff notes.
 
 ### Equipment registration (US7) and demo roles
 
