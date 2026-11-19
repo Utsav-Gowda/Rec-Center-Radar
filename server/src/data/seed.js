@@ -6,7 +6,12 @@ const mongoose = require('mongoose');
 const connectDB = require('../config/db');
 const Floor = require('../models/Floor');
 const Equipment = require('../models/Equipment');
-const { floors, equipment } = require('./seedEquipment');
+const sample = require('./seedEquipment');
+const floor4 = require('./seedFloor4');
+
+// Sample floors used by tests, plus the real Floor 4 layout (US2).
+const floors = [...sample.floors, floor4.floor];
+const equipment = [...sample.equipment, ...floor4.equipment];
 
 async function seed() {
   if (process.env.NODE_ENV === 'production') {

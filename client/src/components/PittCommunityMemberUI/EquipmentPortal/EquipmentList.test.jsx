@@ -177,3 +177,15 @@ test('states that condition labels reflect mechanical working order rather than 
   expect(screen.getByText(/mechanical working order/i)).toBeTruthy();
   expect(screen.getByText(/not real-time availability or occupancy/i)).toBeTruthy();
 });
+test('Show on map hands the selected result to the floor map (US2) and is hidden without a handler', async () => {
+  const placed = { ...squatRack, floor: { _id: 'floor-2', floorNumber: 2, name: 'Floor 2 - Strength' } };
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([placed, { ...cableMachine, floor: null }])));
+  const onShowOnMap = vi.fn();
+  const { rerender } = render(<EquipmentList onShowOnMap={onShowOnMap} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Show Squat Rack on floor map' }));
+  expect(onShowOnMap).toHaveBeenCalledWith(placed);
+  // A machine without an assigned floor has nowhere to show.
+  expect(screen.queryByRole('button', { name: 'Show Cable Crossover Machine on floor map' })).toBeNull();
+  rerender(<EquipmentList />);
+  expect(screen.queryByRole('button', { name: /on floor map/ })).toBeNull();
+});

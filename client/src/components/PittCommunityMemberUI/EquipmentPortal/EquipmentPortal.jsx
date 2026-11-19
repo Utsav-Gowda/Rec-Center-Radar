@@ -3,7 +3,7 @@ import EquipmentList from './EquipmentList.jsx';
 import { apiUrl } from '../../../api.js';
 
 // Equipment Portal: server status line + the equipment list.
-export default function EquipmentPortal({ refreshKey = 0 }) {
+export default function EquipmentPortal({ refreshKey = 0, onShowOnMap = null }) {
   const [health, setHealth] = useState('checking...');
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export default function EquipmentPortal({ refreshKey = 0 }) {
   return (
     <section>
       <p className="status-line"><strong>Status:</strong> {health}</p>
-      <EquipmentList refreshKey={refreshKey} />
+      <EquipmentList refreshKey={refreshKey} onShowOnMap={onShowOnMap} />
     </section>
   );
 }
