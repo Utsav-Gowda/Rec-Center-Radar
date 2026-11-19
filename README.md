@@ -64,7 +64,7 @@ client/src/components/
 │   │   ├── EquipmentPortal.jsx
 │   │   ├── EquipmentList.jsx
 │   │   ├── StatusBadge.jsx
-│   │   └── FloorMap.jsx     # initial map preview; US2 will extend it
+│   │   └── FloorMap.jsx     # floor map with machine outlines (US2)
 │   └── ReportPortal/       # placeholder
 └── GymEmployeeUI/
     └── RegisterEquipment.jsx
@@ -102,6 +102,15 @@ the catalog, and failed requests provide **Retry search**.
 
 See [US1 implementation and verification](docs/equipment-search.md) for the API
 contract, test commands, and the limits of the 1.5-second performance check.
+
+### Equipment location on the floor map (US2)
+
+Choose **Show on map** on any search result. The **Floor map** opens that
+machine's floor, outlines its footprint on the floor plan, and labels it. At
+100% the whole floor fits the screen; **Zoom in** enlarges it for phones and
+centres the selected machine. Floor 4 of the Rec Center is mapped in full
+(78 machines). Load it into a shared database with `npm run seed:floor4`, which
+touches only Floor 4. See [US2 implementation and verification](docs/floor-map.md).
 
 ### Equipment condition & staff verification (US4)
 
@@ -244,7 +253,8 @@ Vite. `client/.env.example` contains the format; do not append `/api` to the URL
 |-------|---------|--------------|
 | `server/` | `npm install` | Install server dependencies |
 | `server/` | `npm start` | Start the API server with its mounted routers on port 5000 |
-| `server/` | `npm run seed` | Replace floor/equipment data in a dedicated development database with sample data |
+| `server/` | `npm run seed` | Replace floor/equipment data in a dedicated development database with sample data plus Floor 4 |
+| `server/` | `npm run seed:floor4` | Add or refresh only Floor 4 and its seeded machines; safe for the shared database |
 | `server/` | `npm test` | Test the API against disposable local MongoDB |
 | `client/` | `npm install` | Install client dependencies |
 | `client/` | `npm run dev` | Start the Vite dev server on port 5173 |
@@ -265,7 +275,7 @@ Vite. `client/.env.example` contains the format; do not append `/api` to the URL
 - **React client:** The Equipment Portal renders equipment cards with status badges and a responsive layout. It builds successfully with Vite.
 - **Seed data:** `server/src/data/seedEquipment.js` supplies sample floors and machines. `npm run seed` replaces the configured database's Floor and Equipment collections; use a dedicated development database.
 - **Registration (US7):** Demo role selection, validated equipment creation with server audit fields, and immediate search/map refresh after saving.
-- **Map foundation for US2:** Floor selection, equipment markers, and floor-plan display with an explicitly labeled coordinate fallback. US2 owns the majority of the full map implementation.
+- **Floor map (US2):** **Show on map** from search opens the machine's floor and outlines its footprint, with zoom for phones. Floor 4 is fully mapped with a floor-plan SVG and 78 seeded machines.
 - **API and UI tests:** Search, registration, demo permissions, API/proxy configuration, and browser CORS preflight are tested. Combined React/HTTP/MongoDB tests verify persistence and search/map refresh using disposable databases, without seeding Atlas.
 - **Pages deployment configuration:** CI builds the repository-relative static site and deploys successful `main` pushes. One-time Pages activation and Render CORS settings are required; see [setup and verification](docs/github-pages.md).
 - **Diagram draft:** The existing deployment diagram is in `docs/`. Final deployment and component diagrams and the editable `.drawio` source will be added separately; see [diagram documentation](docs/README.md).
@@ -276,7 +286,7 @@ Vite. `client/.env.example` contains the format; do not append `/api` to the URL
 - **Pitt Passport SSO:** Not connected. Demo registrations use the fixed `demo-employee` identity rather than a real employee ID; US6 must replace the simulation.
 - **WebSockets / live status updates:** Not implemented. Users have to refresh to see status changes.
 - **Other employee workflows and Report Portal:** Status changes, relocation, and reporting are not implemented here.
-- **Full floor map (US2):** Accurate floor-plan assets and the majority of map/navigation behavior still need implementation beyond this initial preview.
+- **Other floor plans:** Only Floor 4 has a floor-plan image and machine footprints. The sample Floors 1 and 2 still show the labelled coordinate preview.
 - **Hosting rollout:** The shared [Render API](https://rec-center-radar-api.onrender.com/api/health) is live and its Atlas-backed search was verified. It currently runs the merged US1 code; registration, the map, and Pages hosting require this feature PR to be merged, configured, and deployed. See [task #32](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/32), [task #33](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/33), and [Pages setup](docs/github-pages.md).
 
 ## Repository Contents

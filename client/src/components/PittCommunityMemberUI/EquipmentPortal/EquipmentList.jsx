@@ -3,7 +3,8 @@ import StatusBadge from './StatusBadge.jsx';
 import { apiUrl } from '../../../api.js';
 
 // Uses the local Vite proxy or the public API origin supplied to a hosted build.
-export default function EquipmentList({ refreshKey = 0 }) {
+// onShowOnMap (optional, US2) opens the selected machine on its floor map.
+export default function EquipmentList({ refreshKey = 0, onShowOnMap = null }) {
   const [query, setQuery] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState({ query: null, items: [], error: false });
@@ -124,6 +125,10 @@ export default function EquipmentList({ refreshKey = 0 }) {
                       <p className="meta"><strong>Staff note:</strong> {e.statusNote}</p>
                     ) : null}
                   </div>
+                ) : null}
+                {onShowOnMap && e.floor?._id ? (
+                  <button type="button" className="map-link" aria-label={`Show ${e.name} on floor map`}
+                    onClick={() => onShowOnMap(e)}>Show on map</button>
                 ) : null}
               </li>
             );
