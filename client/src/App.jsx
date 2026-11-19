@@ -9,7 +9,8 @@ export default function App() {
   const [demoEnabled, setDemoEnabled] = useState(false);
   const [employee, setEmployee] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [registeredEquipment, setRegisteredEquipment] = useState(null);
+  // The machine the floor map should open and outline: a new registration or a search result (US2).
+  const [mapFocus, setMapFocus] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -24,7 +25,7 @@ export default function App() {
   }, []);
 
   function registered(item) {
-    setRegisteredEquipment(item);
+    setMapFocus(item);
     setRefreshKey((value) => value + 1);
   }
 
@@ -45,8 +46,8 @@ export default function App() {
           <RegisterEquipment onCreated={registered} />
         </>
       ) : null}
-      <EquipmentPortal refreshKey={refreshKey} />
-      <FloorMap refreshKey={refreshKey} focusEquipment={registeredEquipment} />
+      <EquipmentPortal refreshKey={refreshKey} onShowOnMap={(item) => setMapFocus({ ...item, scrollToMap: true })} />
+      <FloorMap refreshKey={refreshKey} focusEquipment={mapFocus} />
     </main>
   );
 }

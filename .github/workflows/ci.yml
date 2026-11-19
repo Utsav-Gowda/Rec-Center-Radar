@@ -33,6 +33,12 @@ jobs:
       - name: Install client dependencies
         run: npm ci --prefix client
 
+      # Download the test MongoDB binary once. Otherwise each test file downloads it
+      # at the same time and they race on the same cache file (ENOENT on rename).
+      - name: Download MongoDB test binary
+        working-directory: server
+        run: node -e "require('mongodb-memory-server').MongoBinary.getPath().then((p) => console.log('MongoDB binary ready:', p))"
+
       - name: Run server tests
         run: npm run test --prefix server
 
