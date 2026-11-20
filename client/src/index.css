@@ -89,3 +89,10 @@ input:focus-visible, button:focus-visible, select:focus-visible { outline: 3px s
 .map-legend-details summary { cursor: pointer; font-weight: 600; }
 .map-link { margin-top: 8px; }
 @media (max-width: 599px) { .map-panel { padding: 12px; } .map-callout { font-size: 0.75rem; } }
+
+.equipment-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 12px; border: 1px solid #d5dbe5; border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+.equipment-filters legend { font-weight: 600; padding: 0 4px; }
+.equipment-filters label { font-weight: 600; font-size: 0.9rem; }
+.equipment-filters select { border: 1px solid #8895a7; border-radius: 6px; padding: 8px; font: inherit; }
+.active-filters { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0 0 12px; }
+.filter-chip { border-radius: 999px; }

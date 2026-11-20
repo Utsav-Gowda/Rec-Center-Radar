@@ -12,8 +12,33 @@ const validateRegistration = require('../utils/validateEquipmentRegistration');
 
 const router = express.Router();
 
-// GET /api/equipment?q=... - literal, case-insensitive substring search (US1).
-// Omitting q, or supplying only whitespace, returns the whole catalog.
+// US3. Each optional filter must be one plain string; arrays or nested objects
+// (e.g. ?floor[$ne]=x) are rejected so query operators can never reach MongoDB.
+function readFilters(query) {
+  const filter = {};
+  const errors = {};
+  for (const key of ['floor', 'room', 'category', 'status']) {
+    const raw = query[key];
+    if (raw === undefined || raw === '') continue;
+    if (typeof raw !== 'string' || raw.includes('\0')) {
+      errors[key] = `${key} must be a single text value.`;
+    } else if ((key === 'floor' || key === 'room') && !mongoose.isValidObjectId(raw)) {
+      errors[key] = `${key} must be a valid ID.`;
+    } else if (key === 'status' && !EQUIPMENT_STATUSES.includes(raw)) {
+      errors[key] = `status must be one of: ${EQUIPMENT_STATUSES.join(', ')}.`;
+    } else if (key === 'category' && raw.trim().length > 100) {
+      errors[key] = 'category must be at most 100 characters.';
+    } else {
+      filter[key] = key === 'category' ? raw.trim() : raw;
+    }
+  }
+  return { filter, errors };
+}
+
+// GET /api/equipment?q=...&floor=...&room=...&category=...&status=...
+// q is a literal, case-insensitive substring search (US1). Omitting q, or supplying
+// only whitespace, returns the whole catalog. The US3 filters narrow the result and
+// combine with q and with each other using AND.
 router.get('/', async (req, res) => {
   const rawQuery = req.query.q ?? '';
   if (typeof rawQuery !== 'string') {
@@ -26,11 +51,15 @@ router.get('/', async (req, res) => {
 
   // Escape metacharacters so input such as ".*" is text, not an executable regex.
   const pattern = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const { filter: facets, errors } = readFilters(req.query);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Check the filter values.', errors });
+  }
   const filter = query
-    ? { $or: ['name', 'workoutType', 'muscleGroups'].map((field) => ({
+    ? { ...facets, $or: ['name', 'workoutType', 'muscleGroups'].map((field) => ({
         [field]: { $regex: pattern, $options: 'i' },
       })) }
-    : {};
+    : facets;
 
   const items = await Equipment.find(filter)
     .maxTimeMS(1000)
