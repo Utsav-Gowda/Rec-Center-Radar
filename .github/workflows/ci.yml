@@ -18,6 +18,8 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # A hung test run should fail fast instead of blocking main for up to 6 hours.
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,6 +34,13 @@ jobs:
 
       - name: Install client dependencies
         run: npm ci --prefix client
+
+      # node --test runs test files in parallel. If the MongoDB binary is missing,
+      # every file downloads it into the same cache folder at once and they collide
+      # on its lock file. Download it once here so the tests find it ready.
+      - name: Download MongoDB test binary
+        working-directory: server
+        run: node -e "require('mongodb-memory-server').MongoBinary.getPath().then((p) => console.log('MongoDB binary ready:', p))"
 
       - name: Run server tests
         run: npm run test --prefix server
