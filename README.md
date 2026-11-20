@@ -31,11 +31,11 @@ Rec-Center Radar is built on the **MERN** stack: MongoDB, Express, React, and No
 
 - **One language end to end.** React, Express, and Node.js all use JavaScript. Every team member can work on any subsystem without switching languages, and the JSON our API returns matches the objects the client renders.
 - **MongoDB instead of PostgreSQL.** Our original plan named PostgreSQL. We switched to MongoDB because our data is document shaped. A floor owns its rooms, so rooms are embedded inside each `Floor` document (the composition in our analysis object model) rather than living in a separate joined table. Equipment records also vary by machine, for example the list of muscle groups, and a flexible schema handles that cleanly.
-- **MongoDB Atlas (cloud, free tier).** Nobody has to install or run a database locally. Every teammate connects to the same shared cluster using a connection string in their own `.env` file.
-- **Mongoose.** MongoDB is schema-less, so Mongoose adds the validation we need: required fields, allowed status values (`Operational`, `Under Maintenance`, `Out of Order`), and a check that a machine's room actually belongs to its floor. It also builds the text index that powers equipment search by name, muscle group, workout type, and category.
+- **MongoDB Atlas (cloud, free tier).** The API connects using its private `MONGODB_URI`. Teammates can run only the frontend against a shared Render API, or run a local API for backend development.
+- **Mongoose.** MongoDB is schema-less, so Mongoose adds the validation we need: required fields, allowed status values (`Operational`, `Under Maintenance`, `Out of Order`), and a check that a machine's room actually belongs to its floor. US1 searches name, workout type, and muscle groups using escaped, case-insensitive substring matching. The schema also defines a text index for future word-based search.
 - **Express.** A small, widely used REST framework. Each subsystem gets its own router file (equipment, authentication, reports, announcements), so the code layout matches our subsystem decomposition and teammates can work in parallel with few merge conflicts.
 - **React.** Component based: `PittCommunityMemberUI` groups the Equipment Portal and Report Portal, while `GymEmployeeUI` is a sibling folder for employee workflows. A responsive layout lets the same app work on phones at the gym and on desktops.
-- **Vite.** Fast dev server with hot reload. Its dev proxy forwards `/api` requests to the Express server on port 5000, so the browser sees a single origin and we do not need CORS setup during development.
+- **Vite.** Fast dev server with hot reload. Its proxy forwards `/api` to `API_PROXY_TARGET`, defaulting to the local Express server on port 5000. Hosted builds use the public `VITE_API_BASE_URL` to call Render directly.
 - **Separate history collections.** Current machine status is stored on the `Equipment` document for fast reads. Every change is also written to `StatusUpdate` or `Relocation`, so we keep a full audit history without slowing down the main search.
 
 ## Subsystem-to-Folder Mapping
@@ -46,9 +46,10 @@ Rec-Center Radar is built on the **MERN** stack: MongoDB, Express, React, and No
 | Equipment Portal | UI | `client/src/components/PittCommunityMemberUI/EquipmentPortal/` | Search, browse, and view equipment status and location |
 | Gym Employee UI | UI | `client/src/components/GymEmployeeUI/` | Employees register equipment and update status and location |
 | Report Portal | UI | `client/src/components/PittCommunityMemberUI/ReportPortal/` | Users report broken or missing equipment (placeholder) |
-| Server entry point | Router | `server/src/index.js` | Loads `.env`, connects to the database, registers models, starts Express |
+| Server entry point | Router | `server/server.js` | Loads `.env`, connects to the database, mounts subsystem routers, starts Express |
 | Equipment router | Router | `server/src/routes/equipmentRoutes.js` | Equipment search, details, status, and relocation endpoints |
 | Authentication router | Router | `server/src/routes/authRoutes.js` | Sign-in and roles (Pitt Passport SSO) |
+| Floor router | Router | `server/src/routes/floorRoutes.js` | Existing floors, rooms, and floor-plan URLs for registration and the initial map |
 | Report router | Router | `server/src/routes/reportRoutes.js` | Equipment problem reports |
 | Announcement router | Router | `server/src/routes/announcementRoutes.js` | Gym announcements |
 | Database connection | Storage | `server/src/config/db.js` | Connects to MongoDB Atlas using `MONGODB_URI` |
@@ -62,34 +63,116 @@ client/src/components/
 │   ├── EquipmentPortal/
 │   │   ├── EquipmentPortal.jsx
 │   │   ├── EquipmentList.jsx
-│   │   └── StatusBadge.jsx
+│   │   ├── StatusBadge.jsx
+│   │   └── FloorMap.jsx     # floor map with machine outlines (US2)
 │   └── ReportPortal/       # placeholder
-└── GymEmployeeUI/          # placeholder
+└── GymEmployeeUI/
+    └── RegisterEquipment.jsx
 ```
 
-`App.jsx` renders the Equipment Portal from its new location. Its internal
-imports remain relative to the portal folder. This reorganization does not add
-API endpoints or change client behavior.
+`App.jsx` renders the Equipment Portal. Its internal imports remain relative to
+the portal folder.
 
-### Router integration dependency
+### API routes
 
-[Issue #16](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/16) tracks
-the Express health endpoint, equipment endpoint, and subsystem router mounts.
-It remains open; its implementation is not included in this structure/docs change.
-The client already requests `GET /api/health` and `GET /api/equipment`, but
-neither endpoint exists yet. The four router files are empty and unmounted.
-Confirm the remaining mount paths against the final diagrams when integrating
-issue #16. The current server entry point is `server/src/index.js` (the issue
-description refers to `server/server.js`).
+The server configuration from [issue #16](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/16)
+is merged. Start `server/server.js` using `npm start`; the older `server/src/index.js`
+does not mount the API routers.
+
+| Path | Current behavior |
+|------|------------------|
+| `GET /api/health` | Reports API and database status |
+| `GET /api/equipment` | Lists equipment with resolved floor and room names |
+| `GET /api/equipment?q=Biceps` | Searches names, workout types, and muscle groups (US1) |
+| `POST /api/equipment` | Registers equipment when demo mode is explicitly enabled and the caller selects the demo employee role (US7) |
+| `GET /api/floors` | Lists existing floors and their rooms |
+| `GET /api/auth/demo` | Reports whether the demo role switch is enabled; does not authenticate anyone |
+| `/api/reports` | Mounted placeholder returning HTTP 501 |
+| `/api/announcements` | Mounted placeholder returning HTTP 501 |
+| Other `/api/auth` routes | Mounted placeholders returning HTTP 501 |
+
+### Equipment search (US1)
+
+Type a machine name, workout type, or muscle group into **Search equipment**.
+For example, try `Squat Rack`, `Strength Training`, or `Biceps`. Matching is
+case-insensitive and accepts partial text. Each card shows the machine name,
+category, assigned floor, workout type, and mechanical condition. An unmatched
+search suggests checking spelling or changing terms. **Clear search** restores
+the catalog, and failed requests provide **Retry search**.
+
+See [US1 implementation and verification](docs/equipment-search.md) for the API
+contract, test commands, and the limits of the 1.5-second performance check.
+
+### Filter equipment (US3)
+
+Under **Filter equipment**, choose a **Floor**, **Room**, **Category**, and/or
+**Operational condition** (Operational, Under Maintenance, Out of Order). Filters
+combine with each other and with the search box. Each active filter appears as a
+chip above the results; click a chip to remove just that filter, or **Clear All**
+to remove every filter. Choosing a floor limits the Room list to that floor.
+Operational condition is the staff-verified mechanical status, not live occupancy.
+The API accepts `floor`, `room`, `category`, and `status` query parameters on
+`GET /api/equipment`; invalid values return HTTP 400.
+
+### Equipment location on the floor map (US2)
+
+Choose **Show on map** on any search result. The **Floor map** opens that
+machine's floor, outlines its footprint on the floor plan, and labels it. At
+100% the whole floor fits the screen; **Zoom in** enlarges it for phones and
+centres the selected machine. Floor 4 of the Rec Center is mapped in full
+(78 machines). Load it into a shared database with `npm run seed:floor4`, which
+touches only Floor 4. See [US2 implementation and verification](docs/floor-map.md).
+
+### Equipment condition & staff verification (US4)
+
+Each equipment card displays an unambiguous condition badge (`Operational`, `Under Maintenance`, or `Out of Order`). The portal explicitly notes that status reflects mechanical working order verified by gym staff rather than real-time availability or occupancy, and cards for `Under Maintenance` or `Out of Order` machines display the last staff verification timestamp and any optional staff notes.
+
+### Update equipment mechanical condition (US5)
+
+When `DEMO_EMPLOYEE_MODE=true` is enabled and **View as gym employee (demo)** is selected, the employee panel includes **Update equipment mechanical condition**. Select a machine from the catalog, choose `Operational`, `Under Maintenance`, or `Out of Order`, and optionally attach or edit a maintenance note. Submitting sends `PATCH /api/equipment/:id/status`, updates the equipment record and `lastVerifiedAt` timestamp, writes an immutable `StatusUpdate` audit log with the employee ID, and propagates the updated status to connected visitors within 5 seconds.
+
+### Equipment registration (US7) and demo roles
+
+Enable `DEMO_EMPLOYEE_MODE=true` on an API connected to a dedicated demo
+database. The frontend then shows **View as gym employee (demo)**. The community
+member view can search and view map positions; selecting the employee role adds
+the registration form. Enter a name, category, workout type, floor, room, and
+X/Y location percentages. Muscle groups are optional. Successful registration
+stores `registeredBy: demo-employee` and the server timestamp, then refreshes
+search and the map preview.
+
+The role switch is a proof of concept, not authentication. Anyone able to reach
+an API with demo mode enabled can select the employee role. The server disables
+demo writes by default. US6 must replace this with real employee identity and
+permissions before using it for actual employee access.
+
+The **Equipment map preview** shows numbered equipment positions and uses a
+floor-plan image when one is available. When an image is missing, it clearly
+labels the coordinate preview as not representing the actual floor layout.
+This is only a foundation for [US2](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/3),
+which should implement the majority of the map experience, accurate floor-plan
+assets, navigation, and improved marker interaction.
+
+See [registration implementation and testing](docs/equipment-registration.md)
+and [shared Render/Atlas setup](docs/shared-backend.md).
+
+The frontend can be published at
+[`https://utsav-gowda.github.io/Rec-Center-Radar/`](https://utsav-gowda.github.io/Rec-Center-Radar/)
+after the repository administrator enables Pages and this PR is merged. The
+Node 24 CI workflow tests PRs and `main` pushes, and deploys Pages only after
+successful main checks. Follow [GitHub Pages setup](docs/github-pages.md) for
+the manual GitHub and Render CORS settings. Pages hosts React; Render and Atlas
+remain the shared API and database. Saved equipment is shared across clients,
+which use search/refresh to fetch new records.
 
 ## Prerequisites
 
 | Tool | Required version | Why |
 |------|------------------|-----|
-| [Node.js](https://nodejs.org/) | **20.19.0 or newer** (Node 22 LTS recommended) | Mongoose 9 and its MongoDB driver require Node `>=20.19.0` |
+| [Node.js](https://nodejs.org/) | **24.x recommended**; minimum **20.19.0** | Mongoose 9 and its MongoDB driver require Node `>=20.19.0` |
 | npm | **10.x or newer** (bundled with Node 20.19+) | Our `package-lock.json` files use lockfile v3 |
 | Git | Any recent version | Clone the repository |
-| MongoDB Atlas account | Free tier | Each developer needs the shared cluster's connection string and their IP on the Atlas access list |
+| MongoDB Atlas access | Needed for running the API | Frontend-only developers using Render do not need database credentials or Atlas IP allowlisting |
 | Web browser | Any modern browser (Chrome, Firefox, Safari, Edge) | Runs the client |
 
 Check your versions:
@@ -102,6 +185,9 @@ npm -v    # should print 10.x or higher
 > **Note:** Node 18 is **not** enough. Mongoose 9.12 refuses to install cleanly on Node versions below 20.19.0.
 
 ## Installation and Setup
+
+For frontend-only development against the shared API, follow
+[shared-backend.md](docs/shared-backend.md) and skip the local-server steps below.
 
 ### 1. Clone the repository
 
@@ -132,7 +218,9 @@ Open `server/.env` and fill in:
 | Variable | Required | Example | Notes |
 |----------|----------|---------|-------|
 | `MONGODB_URI` | Yes | `mongodb+srv://<user>:<password>@<cluster>.mongodb.net/rec-center-radar` | Get this from a teammate or from Atlas: **Connect → Drivers** |
-| `PORT` | No | `5000` | Defaults to `5000`. Keep it at 5000, because the client proxy expects it |
+| `PORT` | No | `5000` | Local default; match it with the frontend proxy target. Render supplies its own port |
+| `CLIENT_ORIGIN` | No | `http://localhost:5173` | Comma-separated browser origins allowed by the API |
+| `DEMO_EMPLOYEE_MODE` | No | `false` | Set to `true` only to enable simulated employee registration against demo data |
 
 In MongoDB Atlas, go to **Network Access** and add your current IP address. If your IP is not on the list, the server times out after 10 seconds.
 
@@ -143,14 +231,14 @@ In MongoDB Atlas, go to **Network Access** and add your current IP address. If y
 Run this from inside the `server/` folder so `dotenv` finds your `.env` file:
 
 ```bash
-node src/index.js
+npm start
 ```
 
 If it worked, you will see:
 
 ```
 MongoDB Atlas connected: <host> / database "<name>"
-Server listening on port 5000
+Rec Center Radar API listening on port 5000
 ```
 
 If you see `MONGODB_URI is not set`, your `.env` file is missing or you started the server from the wrong folder.
@@ -165,18 +253,26 @@ npm install
 npm run dev
 ```
 
-Then open **http://localhost:5173** in your browser. Vite forwards any request to `/api` to the server at `http://localhost:5000`.
+Then open **http://localhost:5173** in your browser. Vite forwards `/api` to
+`http://localhost:5000` by default. To choose another local port or the shared
+Render service, set `API_PROXY_TARGET` in ignored `client/.env.local` and restart
+Vite. `client/.env.example` contains the format; do not append `/api` to the URL.
 
 ### Command reference
 
 | Where | Command | What it does |
 |-------|---------|--------------|
 | `server/` | `npm install` | Install server dependencies |
-| `server/` | `node src/index.js` | Start the API server on port 5000 |
+| `server/` | `npm start` | Start the API server with its mounted routers on port 5000 |
+| `server/` | `npm run seed` | Replace floor/equipment data in a dedicated development database with sample data plus Floor 4 |
+| `server/` | `npm run seed:floor4` | Add or refresh only Floor 4 and its seeded machines; safe for the shared database |
+| `server/` | `npm test` | Test the API against disposable local MongoDB |
 | `client/` | `npm install` | Install client dependencies |
 | `client/` | `npm run dev` | Start the Vite dev server on port 5173 |
 | `client/` | `npm run build` | Build the production bundle into `client/dist/` |
 | `client/` | `npm run preview` | Preview the production build locally |
+| `client/` | `npm test` | Test search UI behavior |
+| `client/` | `npm run test:integration` | Test React input through real HTTP/MongoDB back to rendered results (install both packages first) |
 
 ## Project Status
 
@@ -184,21 +280,26 @@ Then open **http://localhost:5173** in your browser. Vite forwards any request t
 
 - **MongoDB Atlas connection:** The server connects to the shared Atlas cluster and fails with a clear error if `MONGODB_URI` is missing or the cluster cannot be reached.
 - **Data models (storage subsystem):** Mongoose schemas for `Floor` (with embedded rooms), `Equipment`, `StatusUpdate`, and `Relocation`. They include validation (allowed statuses, room must belong to its floor, unique room names per floor) and indexes for text search and filtering.
-- **Express server:** Starts, parses JSON, and registers all models on startup.
+- **Express server:** Starts, parses JSON, exposes health/equipment endpoints, and mounts subsystem routers.
 - **Subsystem folder structure:** Folders and router files exist for every subsystem, so teammates can work in parallel.
-- **React client skeleton:** The Equipment Portal page renders an equipment list with status badges and a responsive layout. It builds successfully with Vite.
+- **Equipment search (US1):** Search by name, workout type, or muscle group, with name/category/floor results, spelling guidance for no matches, loading feedback, and retry on errors.
+- **React client:** The Equipment Portal renders equipment cards with status badges and a responsive layout. It builds successfully with Vite.
+- **Seed data:** `server/src/data/seedEquipment.js` supplies sample floors and machines. `npm run seed` replaces the configured database's Floor and Equipment collections; use a dedicated development database.
+- **Registration (US7):** Demo role selection, validated equipment creation with server audit fields, and immediate search/map refresh after saving.
+- **Filters (US3):** Floor, room, category, and operational-condition filters with removable chips and Clear All.
+- **Floor map (US2):** **Show on map** from search opens the machine's floor and outlines its footprint, with zoom for phones. Floor 4 is fully mapped with a floor-plan SVG and 78 seeded machines.
+- **API and UI tests:** Search, registration, demo permissions, API/proxy configuration, and browser CORS preflight are tested. Combined React/HTTP/MongoDB tests verify persistence and search/map refresh using disposable databases, without seeding Atlas.
+- **Pages deployment configuration:** CI builds the repository-relative static site and deploys successful `main` pushes. One-time Pages activation and Render CORS settings are required; see [setup and verification](docs/github-pages.md).
 - **Diagram draft:** The existing deployment diagram is in `docs/`. Final deployment and component diagrams and the editable `.drawio` source will be added separately; see [diagram documentation](docs/README.md).
 
 ### What does not work yet
 
-- **API endpoints:** All four router files (`equipment`, `auth`, `report`, `announcement`) are empty, and the server does not mount any routes yet. Because `/api/equipment` does not exist yet, the client shows "Could not load equipment."
-- **Pitt Passport SSO:** Not connected. We still do not know whether we can get access as students or will need to simulate login during development. Until then, employee actions store a Pitt ID string as a placeholder because there is no `User` model.
+- **Remaining subsystem APIs:** Real authentication, reports, and announcements remain unimplemented. The demo capability endpoint is not a sign-in endpoint.
+- **Pitt Passport SSO:** Not connected. Demo registrations use the fixed `demo-employee` identity rather than a real employee ID; US6 must replace the simulation.
 - **WebSockets / live status updates:** Not implemented. Users have to refresh to see status changes.
-- **Gym Employee UI and Report Portal:** Only placeholder folders so far (planned for Sprint 5).
-- **Floor map:** The data model stores floor plans and marker positions, but the map view is not built yet.
-- **Seed data:** The database starts empty, and there is no seed script yet.
-- **Hosting:** Not deployed yet. We plan to host the client on Vercel and the server on Render.
-- **Automated tests:** None yet.
+- **Other employee workflows and Report Portal:** Status changes, relocation, and reporting are not implemented here.
+- **Other floor plans:** Only Floor 4 has a floor-plan image and machine footprints. The sample Floors 1 and 2 still show the labelled coordinate preview.
+- **Hosting rollout:** The shared [Render API](https://rec-center-radar-api.onrender.com/api/health) is live and its Atlas-backed search was verified. It currently runs the merged US1 code; registration, the map, and Pages hosting require this feature PR to be merged, configured, and deployed. See [task #32](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/32), [task #33](https://github.com/Utsav-Gowda/Rec-Center-Radar/issues/33), and [Pages setup](docs/github-pages.md).
 
 ## Repository Contents
 

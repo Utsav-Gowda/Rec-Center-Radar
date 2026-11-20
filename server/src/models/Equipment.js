@@ -24,13 +24,20 @@ const equipmentSchema = new Schema(
       x: { type: Number, required: true, min: 0, max: 1 },
       y: { type: Number, required: true, min: 0, max: 1 },
     },
+    // Optional footprint (also fractions of the image) and short label, so the map can
+    // outline the machine itself (US2). Without them the map shows a round marker.
+    mapSize: {
+      width: { type: Number, min: 0, max: 1 },
+      height: { type: Number, min: 0, max: 1 },
+    },
+    mapLabel: { type: String, trim: true, maxlength: 40 },
 
     registeredBy: { type: String }, // Pitt ID of the gym employee (placeholder until a User model exists)
   },
   { timestamps: true } // createdAt doubles as registeredAt (AOM attribute)
 );
 
-// Search by name, workout type, muscle group, or category (FR1, NFR1).
+// Available for word-based search. US1 uses escaped regex for partial matches.
 equipmentSchema.index(
   { name: 'text', workoutType: 'text', muscleGroups: 'text', category: 'text' },
   { name: 'equipment_search', weights: { name: 5, muscleGroups: 3, workoutType: 2, category: 1 } }
