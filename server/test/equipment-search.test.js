@@ -114,3 +114,49 @@ test('each acceptance query completes within the API budget on a 1,009-item cata
     assert.ok(duration < 1300, `${query} took ${duration.toFixed(1)} ms`);
   }
 });
+
+// US3: filters
+async function filtered(params) {
+  const response = await fetch(`${baseUrl}/api/equipment?${new URLSearchParams(params)}`);
+  return { status: response.status, body: await response.json() };
+}
+
+test('US3: floor, room, category and status filters narrow the catalog and combine with each other and q', async () => {
+  const all = await search();
+  const sample = all.data.find((item) => item.status === 'Operational');
+  const byFloor = await filtered({ floor: sample.floor._id });
+  assert.ok(byFloor.body.count > 0 && byFloor.body.count < all.count);
+  assert.ok(byFloor.body.data.every((item) => item.floor._id === sample.floor._id));
+
+  const byRoom = await filtered({ floor: sample.floor._id, room: sample.room._id });
+  assert.ok(byRoom.body.data.every((item) => item.room._id === sample.room._id));
+
+  const byCategory = await filtered({ category: sample.category });
+  assert.ok(byCategory.body.data.every((item) => item.category === sample.category));
+
+  const combined = await filtered({ floor: sample.floor._id, category: sample.category, status: 'Operational', q: sample.name });
+  assert.ok(combined.body.data.some((item) => item._id === sample._id));
+  assert.ok(combined.body.data.every((item) => item.status === 'Operational' && item.category === sample.category));
+
+  assert.deepEqual((await filtered({ status: 'Out of Order' })).body.data.map((i) => i.status).filter((s) => s !== 'Out of Order'), []);
+  assert.equal((await filtered({ floor: sample.floor._id, q: 'zzzz-no-such-machine' })).body.count, 0);
+});
+
+test('US3: blank filters are ignored, and invalid or injected filter values are rejected', async () => {
+  assert.equal((await filtered({ floor: '', status: '' })).body.count, catalogSize);
+  for (const params of [
+    'floor=not-an-id', 'room=123', 'status=Broken', 'category=' + 'x'.repeat(101),
+    'status=Operational&status=Out%20of%20Order',
+  ]) {
+    const response = await fetch(`${baseUrl}/api/equipment?${params}`);
+    assert.equal(response.status, 400, params);
+    assert.equal(typeof (await response.json()).error, 'string');
+  }
+  // Express 5's simple query parser keeps "floor[$ne]" as a literal key, so no
+  // operator object reaches MongoDB: the unknown key is ignored and nothing is filtered.
+  for (const params of ['floor[$ne]=x', 'category[$ne]=x']) {
+    const response = await fetch(`${baseUrl}/api/equipment?${params}`);
+    assert.equal(response.status, 200, params);
+    assert.equal((await response.json()).count, catalogSize, params);
+  }
+});

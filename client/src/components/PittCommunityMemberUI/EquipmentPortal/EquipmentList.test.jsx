@@ -189,3 +189,72 @@ test('Show on map hands the selected result to the floor map (US2) and is hidden
   rerender(<EquipmentList />);
   expect(screen.queryByRole('button', { name: /on floor map/ })).toBeNull();
 });
+
+// US3: filters
+const f1 = { _id: 'f1', floorNumber: 1, name: 'Floor 1 - Cardio' };
+const f2 = { _id: 'f2', floorNumber: 2, name: 'Floor 2 - Strength' };
+const treadmill = { ...squatRack, _id: 'tm', name: 'Treadmill', category: 'Cardio', floor: f1, room: { _id: 'r1', name: 'Cardio Room' } };
+const rack = { ...squatRack, _id: 'sr', floor: f2, room: { _id: 'r2', name: 'Weight Room' } };
+
+function filterApi() {
+  return vi.fn().mockImplementation((url) => {
+    const params = new URL(url, 'http://localhost').searchParams;
+    const all = [treadmill, rack];
+    const data = all.filter((e) => (!params.get('floor') || e.floor._id === params.get('floor'))
+      && (!params.get('category') || e.category === params.get('category')));
+    return Promise.resolve(response(data));
+  });
+}
+
+test('US3: filters combine, show removable chips, and Clear All restores the catalog', async () => {
+  const user = userEvent.setup();
+  const fetchMock = filterApi();
+  vi.stubGlobal('fetch', fetchMock);
+  render(<EquipmentList />);
+  await screen.findByRole('heading', { name: 'Treadmill' });
+  expect(screen.getByRole('heading', { name: 'Squat Rack' })).toBeTruthy();
+
+  await user.selectOptions(screen.getByLabelText('Floor'), 'f2');
+  await waitFor(() => expect(screen.queryByRole('heading', { name: 'Treadmill' })).toBeNull());
+  expect(fetchMock).toHaveBeenLastCalledWith('/api/equipment?floor=f2', expect.any(Object));
+  await user.selectOptions(screen.getByLabelText('Category'), 'Free Weights');
+  await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/equipment?floor=f2&category=Free%20Weights', expect.any(Object)));
+
+  const chips = within(screen.getByRole('list', { name: 'Active filters' }));
+  expect(chips.getByRole('button', { name: 'Remove filter Floor: Floor 2 - Strength' })).toBeTruthy();
+  expect(chips.getByRole('button', { name: 'Remove filter Category: Free Weights' })).toBeTruthy();
+
+  await user.click(chips.getByRole('button', { name: 'Remove filter Floor: Floor 2 - Strength' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/equipment?category=Free%20Weights', expect.any(Object)));
+  expect(screen.queryByRole('button', { name: 'Remove filter Floor: Floor 2 - Strength' })).toBeNull();
+
+  await user.click(screen.getByRole('button', { name: 'Clear All' }));
+  await screen.findByRole('heading', { name: 'Treadmill' });
+  expect(screen.getByRole('heading', { name: 'Squat Rack' })).toBeTruthy();
+  expect(screen.queryByRole('list', { name: 'Active filters' })).toBeNull();
+  expect(fetchMock).toHaveBeenLastCalledWith('/api/equipment', expect.any(Object));
+});
+
+test('US3: choosing a floor limits the room choices and changing floors drops the room filter', async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal('fetch', filterApi());
+  render(<EquipmentList />);
+  await screen.findByRole('heading', { name: 'Treadmill' });
+  const room = screen.getByLabelText('Room');
+  expect(within(room).getAllByRole('option').map((o) => o.textContent)).toEqual(['All rooms', 'Cardio Room', 'Weight Room']);
+  await user.selectOptions(screen.getByLabelText('Floor'), 'f1');
+  expect(within(room).getAllByRole('option').map((o) => o.textContent)).toEqual(['All rooms', 'Cardio Room']);
+  await user.selectOptions(room, 'r1');
+  expect(room.value).toBe('r1');
+  await user.selectOptions(screen.getByLabelText('Floor'), 'f2');
+  expect(room.value).toBe('');
+});
+
+test('US3: an empty filtered result explains how to recover', async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => Promise.resolve(response(url.includes('status=') ? [] : [squatRack]))));
+  render(<EquipmentList />);
+  await screen.findByRole('heading', { name: 'Squat Rack' });
+  await user.selectOptions(screen.getByLabelText('Operational condition'), 'Out of Order');
+  await screen.findByText(/No equipment matches the selected filters/);
+});

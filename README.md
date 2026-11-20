@@ -103,6 +103,17 @@ the catalog, and failed requests provide **Retry search**.
 See [US1 implementation and verification](docs/equipment-search.md) for the API
 contract, test commands, and the limits of the 1.5-second performance check.
 
+### Filter equipment (US3)
+
+Under **Filter equipment**, choose a **Floor**, **Room**, **Category**, and/or
+**Operational condition** (Operational, Under Maintenance, Out of Order). Filters
+combine with each other and with the search box. Each active filter appears as a
+chip above the results; click a chip to remove just that filter, or **Clear All**
+to remove every filter. Choosing a floor limits the Room list to that floor.
+Operational condition is the staff-verified mechanical status, not live occupancy.
+The API accepts `floor`, `room`, `category`, and `status` query parameters on
+`GET /api/equipment`; invalid values return HTTP 400.
+
 ### Equipment location on the floor map (US2)
 
 Choose **Show on map** on any search result. The **Floor map** opens that
@@ -275,6 +286,7 @@ Vite. `client/.env.example` contains the format; do not append `/api` to the URL
 - **React client:** The Equipment Portal renders equipment cards with status badges and a responsive layout. It builds successfully with Vite.
 - **Seed data:** `server/src/data/seedEquipment.js` supplies sample floors and machines. `npm run seed` replaces the configured database's Floor and Equipment collections; use a dedicated development database.
 - **Registration (US7):** Demo role selection, validated equipment creation with server audit fields, and immediate search/map refresh after saving.
+- **Filters (US3):** Floor, room, category, and operational-condition filters with removable chips and Clear All.
 - **Floor map (US2):** **Show on map** from search opens the machine's floor and outlines its footprint, with zoom for phones. Floor 4 is fully mapped with a floor-plan SVG and 78 seeded machines.
 - **API and UI tests:** Search, registration, demo permissions, API/proxy configuration, and browser CORS preflight are tested. Combined React/HTTP/MongoDB tests verify persistence and search/map refresh using disposable databases, without seeding Atlas.
 - **Pages deployment configuration:** CI builds the repository-relative static site and deploys successful `main` pushes. One-time Pages activation and Render CORS settings are required; see [setup and verification](docs/github-pages.md).
